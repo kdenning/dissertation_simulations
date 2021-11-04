@@ -1,0 +1,97 @@
+---
+title: "Simulation Follow-up Studies"
+output: 
+    html_document:
+      code_download: TRUE
+      toc: TRUE
+      toc_float:
+        collapsed: FALSE
+      toc_depth: 1
+      code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, error = FALSE}
+library(simr)
+library(lme4)
+library(tidyr)
+library(dplyr)
+#library(tidyverse)
+#library(magrittr)
+library(rio)
+library(sjPlot)
+
+source("functions/Cleaning.R")
+
+# Setting global chunk options
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+
+options(scipen = 999)
+
+# Importing data
+wide_raw <- import("data/analog2_wide_pt to remove.csv") 
+
+# Cleaning data using functions
+wide_data_clean <- wide_factor_clean(wide_raw)
+
+long_data <- wide_to_long(wide_data_clean)
+
+study1_data <- long_data %>% 
+  select(sub_id, target_bfi_value, target_bfi_number, self_c, 
+         target_number_collapsed, condition_order, threat_c) %>% 
+  na.omit() %>% 
+  unique()
+```
+
+# Using data from Study 1 (observed power)
+
+## 2-level within
+
+```{r}
+study1_mod1 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*condition_order + (self_c|sub_id), data = study1_data)
+
+tab_model(study1_mod1)
+
+powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c*target_number_collapsed), nsim = 100) #98% at 100 iterations
+```
+
+## 2-level within & moderator
+
+### Main effect accounting for moderator
+
+```{r}
+study1_mod2 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*threat_c + (self_c|sub_id), data = study1_data)
+
+powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c*target_number_collapsed), nsim = 100) #88% power
+```
+
+### Test of moderator
+
+```{r}
+powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c*threat_c), nsim = 100) # 99% power
+```
+
+## 2 (within) x 2 (between)
+
+*Adding between-subjects categorical variable*
+
+```{r}
+powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c*target_number_collapsed*condition_order), nsim = 100) # 0% power
+```
+
+Not enough power for the interaction
+
+# Using simulated data to match Study 2
+
+## 3-level within-subjects
+
+## 3 (within) x 2 (between)
+
+# Using simulated data to match Study 3
+
+## 3 (between) x 2 (within)
+
+## 3 (between) x 2 (within) x 2 (between)
