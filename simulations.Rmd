@@ -8,6 +8,7 @@ output:
         collapsed: FALSE
       toc_depth: 1
       code_folding: hide
+      mathjax: null
 editor_options: 
   chunk_output_type: console
 ---
@@ -46,16 +47,16 @@ study1_data <- long_data %>%
   unique()
 ```
 
-# Using data from Study 1 (observed power)
+# Using data from Study 1 (observed power) {.tabset .tabset-fade .tabset-pills}
+
+**These reflect observed power of results that can be found in Study 1 of my dissertation (project titled analogous-perspective-taking-2 on github: https://github.com/kdenning/analogous-perspective-taking-2). I am using them here as reference for simulations for Studies 2 and 3 below.**
 
 ## 2-level within
 
 ```{r}
 study1_mod1 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*condition_order + (self_c|sub_id), data = study1_data)
 
-tab_model(study1_mod1)
-
-powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c*target_number_collapsed), nsim = 100) #98% at 100 iterations
+powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed), nsim = 10)
 ```
 
 ## 2-level within & moderator
@@ -65,13 +66,13 @@ powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c*target_number_co
 ```{r}
 study1_mod2 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*threat_c + (self_c|sub_id), data = study1_data)
 
-powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c*target_number_collapsed), nsim = 100) #88% power
+powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed), nsim = 10)
 ```
 
 ### Test of moderator
 
 ```{r}
-powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c*threat_c), nsim = 100) # 99% power
+powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c:threat_c), nsim = 10)
 ```
 
 ## 2 (within) x 2 (between)
@@ -79,19 +80,222 @@ powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c*threat_c), nsim 
 *Adding between-subjects categorical variable*
 
 ```{r}
-powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c*target_number_collapsed*condition_order), nsim = 100) # 0% power
+powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed:condition_order), nsim = 10)
 ```
 
-Not enough power for the interaction
+# Simulated power - Study 2 {.tabset .tabset-fade .tabset-pills}
 
-# Using simulated data to match Study 2
+**Check code chunk to see how data was simulated**
 
-## 3-level within-subjects
+```{r}
+# sim data study 2
+targets <- c("white_man", "white_woman", "black_man")
+descriptions <- c("empathetic", "cold")
+
+# Using descriptives from previous study to simulate data
+psych::describe(long_data$self_c)
+psych::describe(long_data$target_bfi_value)
+psych::describe(long_data$threat_c)
+
+sim1 <- data.frame(id = rep(factor(1:450), each = 19), 
+                   bfi_num = rep(1:19),
+                   self_score_c = rep(rnorm(8550, mean = 0, sd = 1.28)),
+                   targ_score = rnorm(8550, mean = 3, sd = 1.14),
+                   target_type = rep(targets, each = 19),
+                   descrip_cond = rep(descriptions, each = 19),
+                   threat_c = rnorm(8550, mean = 0, sd = 1.3))
+
+sim1_clean <- sim1 %>% 
+  mutate(descrip_cond = as.factor(descrip_cond),
+         target_type = as.factor(target_type))
+```
+
+## 3-level between-subjects
+
+### Results
+
+**Check code chunks of each model (under "Results") to see how fixed and random effects, as well as residuals, were estimated.**
+
+```{r}
+# tab_model(study1_mod1) # Using results from study 1 as basis
+
+# intercept, self_c, target type:wm v ww, target type:wm v bm, self_c:target_type: wm v ww, self_c:target_type: wm v bm
+fixed <- c(3, -0.07, 0.08, 0.07, -0.13, -0.15)
+rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
+res <- 1.2
+
+sim_mod1 <- makeLmer(targ_score ~ self_score_c*target_type + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
+
+tab_model(sim_mod1)
+```
+
+### Powercurve
+
+```{r}
+powercurve_sim_mod1 <- powerCurve(sim_mod1, 
+                                  along = "id", 
+                                  nsim = 10,  
+                                  test = fcompare(targ_score ~ self_score_c:target_type),
+                                  breaks = c(150, 200, 250, 300, 350, 450))
+powercurve_sim_mod1
+
+plot(powercurve_sim_mod1)
+
+# https://cran.r-project.org/web/packages/simr/vignettes/examples.html
+```
+
+## With threat moderator
+
+### Results
+
+```{r}
+summary(study1_mod2)
+# intercept, self_c, target type:wm v ww, target type:wm v bm, self_c:target_type: wm v ww, self_c:target_type: wm v bm
+fixed <- c(3, -0.07, 0.08, 0.08, -.04, 0.07, 0.07, -.07, 0.01, 0.01, -0.13, -0.15)
+rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
+res <- 1.2
+
+sim_mod2 <- makeLmer(targ_score ~ self_score_c*target_type*threat_c + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
+
+sim_mod2 <- makeLmer(targ_score ~ self_score_c*target_type*threat_c + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
+# Do I need to do something to show this is within-subjects?
+
+tab_model(sim_mod2)
+```
+
+### Powercurve
+
+```{r}
+# powerSim(sim_mod2, nsim=100, test = fcompare(targ_score ~ self_score_c:target_type:threat_c))
+
+powercurve_sim_mod2 <- powerCurve(sim_mod2, 
+                                  along = "id", 
+                                  nsim = 10,  
+                                  test = fcompare(targ_score ~ self_score_c:target_type:threat_c),
+                                  breaks = c(150, 200, 250, 300, 350, 450))
+powercurve_sim_mod2
+
+plot(powercurve_sim_mod2)
+```
 
 ## 3 (within) x 2 (between)
 
-# Using simulated data to match Study 3
+### Results
+
+```{r}
+summary(study1_mod1)
+# intercept, self_c, target type:wm v ww, target type:wm v bm, self_c:target_type: wm v ww, self_c:target_type: wm v bm
+fixed <- c(3, -0.07, 0.08, 0.07, 0.09, 0.08, 0.14, 0.12, 0.01, 0.01, -0.12, -0.13)
+rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
+res <- 1.2
+
+sim_mod3 <- makeLmer(targ_score ~ self_score_c*target_type*descrip_cond + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
+
+tab_model(sim_mod3)
+```
+
+### Powercurve
+
+```{r}
+# powerSim(sim_mod3, nsim=1, test = fcompare(targ_score ~ self_score_c:target_type:descrip_cond))
+
+powercurve_sim_mod3 <- powerCurve(sim_mod3, 
+                                  along = "id", 
+                                  nsim = 100,  
+                                  test = fcompare(targ_score ~ self_score_c:target_type:descrip_cond),
+                                  breaks = c(150, 200, 250, 300, 350, 450))
+powercurve_sim_mod3
+
+plot(powercurve_sim_mod3)
+```
+
+# Using simulated data to match Study 3 {.tabset .tabset-fade .tabset-pills}
+
+**Check code chunk to see how data was simulated**
+
+```{r}
+# sim data study 3
+targets <- c("white_man", "white_woman")
+intervention <- c("control", "analog", "narrative")
+politics <- c("liberal", "conservative")
+
+sim2 <- data.frame(id = rep(factor(1:675), each = 19*2), 
+                   bfi_num = rep(1:19, each = 2),
+                   self_score_c = rep(rnorm(25650, mean = 0, sd = 1.28), each = 2),
+                   targ_score = rnorm(25650, mean = 3, sd = 1.14),
+                   target_type = rep(targets),
+                   pt_intervention = rep(intervention, each = 19*2),
+                   threat_c = rnorm(25650, mean = 0, sd = 1.3),
+                   politics = rep(politics, each = 19*2))
+
+sim2_clean <- sim2 %>% 
+  mutate(pt_intervention = as.factor(pt_intervention),
+         target_type = as.factor(target_type))
+```
 
 ## 3 (between) x 2 (within)
 
+### Results
+
+```{r}
+summary(study1_mod1)
+# intercept, me self, me targ, me pt, self x targ, self x pt 1, self x pt 2, targ x pt 1, targ x pt 2, self x targ x pt 1, self x targ x pt 2
+fixed <- c(3, -0.07, 0.06, 0.12, 0.08, 0.09, 0.14, 0.12, -0.07, -0.02, -0.10, -0.13)
+rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
+res <- 1.2
+
+sim2_mod1 <- makeLmer(targ_score ~ self_score_c*target_type*pt_intervention + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim2_clean)
+
+tab_model(sim2_mod1)
+```
+
+### Powercurve
+
+```{r}
+# powerSim(sim2_mod1, nsim=1, test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention))
+
+powercurve_sim2_mod1 <- powerCurve(sim2_mod1, 
+                                  along = "id", 
+                                  nsim = 10,  
+                                  test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention),
+                                  breaks = c(250, 300, 350, 450, 550, 650))
+
+powercurve_sim2_mod1
+
+plot(powercurve_sim2_mod1)
+```
+
+
 ## 3 (between) x 2 (within) x 2 (between)
+
+### Results
+
+```{r}
+summary(study1_mod1)
+# intercept, me self, me targ, me pt, self x targ, self x pt 1, self x pt 2, targ x pt 1, targ x pt 2, self x targ x pt 1, self x targ x pt 2
+fixed <- c(3, -0.07, 0.06, 0.12, 0.10, 0.02, 0.08, 0.14, 0.12, -0.07, -0.02, -.10, 0.04, -0.02, -0.03, -0.10, -0.14, -0.12, -0.12, -0.08, 0.02, 0.01, -0.10, -0.13)
+rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
+res <- 1.2
+
+lmer(targ_score ~ self_score_c*target_type*pt_intervention*politics + (self_score_c|id), data = sim2_clean)
+
+sim2_mod2 <- makeLmer(targ_score ~ self_score_c*target_type*pt_intervention*politics + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim2_clean)
+
+tab_model(sim2_mod2)
+```
+
+### Powercurve
+
+```{r}
+# powerSim(sim2_mod2, nsim=1, test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention))
+
+powercurve_sim2_mod2 <- powerCurve(sim2_mod2, 
+                                  along = "id", 
+                                  nsim = 10,  
+                                  test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention:politics),
+                                  breaks = c(300, 350, 450, 550, 600, 650))
+
+powercurve_sim2_mod2
+
+plot(powercurve_sim2_mod2)
+```
