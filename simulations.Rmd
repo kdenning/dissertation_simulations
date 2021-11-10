@@ -42,45 +42,52 @@ long_data <- wide_to_long(wide_data_clean)
 
 study1_data <- long_data %>% 
   select(sub_id, target_bfi_value, target_bfi_number, self_c, 
-         target_number_collapsed, condition_order, threat_c) %>% 
+         target_number_collapsed, condition_order, threat_c, cand_pref, threat) %>% 
+  filter(cand_pref == "Not Trump Supporter") %>% 
   na.omit() %>% 
   unique()
+
+study1_filtered <- study1_data %>% 
+  filter(target_number_collapsed == "target_1")
 ```
 
 # Using data from Study 1 (observed power) {.tabset .tabset-fade .tabset-pills}
 
 **These reflect observed power of results that can be found in Study 1 of my dissertation (project titled analogous-perspective-taking-2 on github: https://github.com/kdenning/analogous-perspective-taking-2). I am using them here as reference for simulations for Studies 2 and 3 below.**
 
-## 2-level within
+## 2 categorical & self
 
 ```{r}
 study1_mod1 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*condition_order + (self_c|sub_id), data = study1_data)
 
-powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed), nsim = 10)
+tab_model(study1_mod1)
+
+powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed:condition_order), nsim = 10)
+
+study1_mod2 <- lm(threat ~ target_number_collapsed*condition_order, data = study1_data)
+
+tab_model(study1_mod2)
+
+# pre-ratings of threat were higher for order 1 (female first) than order 2
+ggplot(study1_data, aes(condition_order, threat)) +
+  geom_col() # weird, hadn't even seen a target yet...
 ```
 
-## 2-level within & moderator
+```{r}
+study1_filter_mod1 <- lmer(target_bfi_value ~ self_c*condition_order + (self_c|sub_id), data = study1_filtered)
+tab_model(study1_filter_mod1)
 
-### Main effect accounting for moderator
+library(tidyverse)
+ggplot(study1_filtered, aes(self_c, target_bfi_value, group = condition_order)) +
+  geom_smooth(method = "lm")
+```
+
+## Adding moderator
 
 ```{r}
-study1_mod2 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*threat_c + (self_c|sub_id), data = study1_data)
+study1_mod2 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*condition_order*threat_c + (self_c|sub_id), data = study1_data)
 
 powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed), nsim = 10)
-```
-
-### Test of moderator
-
-```{r}
-powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c:threat_c), nsim = 10)
-```
-
-## 2 (within) x 2 (between)
-
-*Adding between-subjects categorical variable*
-
-```{r}
-powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed:condition_order), nsim = 10)
 ```
 
 # Simulated power - Study 2 {.tabset .tabset-fade .tabset-pills}
@@ -89,42 +96,89 @@ powerSim(study1_mod1, test = fcompare(target_bfi_value ~ self_c:target_number_co
 
 ```{r}
 # sim data study 2
-targets <- c("white_man", "white_woman", "black_man")
+targ_gender <- c("male", "female")
 descriptions <- c("empathetic", "cold")
+
+targ_gender_wth <- c("male", "female")
+# descriptions_btw <- c("empathetic", "empathetic", "cold", "cold", "empathetic", "empathetic", "cold", "cold")
+# descriptions <- c("empathetic", "empathetic", "cold", "cold")
+intervention_wth <- c("pre-analog", "post-analog", "pre-analog", "post-analog", "pre-analog", "post-analog", "pre-analog", "post-analog")
+intervention_btw <- c("control", "analog")
 
 # Using descriptives from previous study to simulate data
 psych::describe(long_data$self_c)
 psych::describe(long_data$target_bfi_value)
 psych::describe(long_data$threat_c)
 
-sim1 <- data.frame(id = rep(factor(1:450), each = 19), 
-                   bfi_num = rep(1:19),
-                   self_score_c = rep(rnorm(8550, mean = 0, sd = 1.28)),
-                   targ_score = rnorm(8550, mean = 3, sd = 1.14),
-                   target_type = rep(targets, each = 19),
-                   descrip_cond = rep(descriptions, each = 19),
-                   threat_c = rnorm(8550, mean = 0, sd = 1.3))
+sim1_wth <- data.frame(id = rep(factor(1:480), each = 4),
+                   self_1 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_2 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_3 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_4 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_5 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_6 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_7 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_8 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_9 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_10 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_11 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_12 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_13 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_14 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_15 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_16 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_17 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_18 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   self_19 = rep(rnorm(480, mean = 0, sd = 1.28), each = 4),
+                   targ_1 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_2 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_3 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_4 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_5 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_6 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_7 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_8 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_9 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_10 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_11 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_12 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_13 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_14 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_15 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_16 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_17 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_18 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   targ_19 = rep(rnorm(480, mean = 3, sd = 1.14), each = 4),
+                   descrip_cond = rep(descriptions),
+                   intervention = rep(intervention_btw, each = 4),
+                   targ_gender = rep(targ_gender, each = 2),
+                   threat_c = rnorm(960, mean = 0, sd = 1.3),
+                   self_esteem = rnorm(960, mean = 0, sd = 1.5))
 
-sim1_clean <- sim1 %>% 
-  mutate(descrip_cond = as.factor(descrip_cond),
-         target_type = as.factor(target_type))
+
+sim1_wth_clean <- sim1_wth %>%
+  pivot_longer(cols = self_1:targ_19,
+             names_sep = "_",
+             names_to = c("bfi_type", "bfi_number")) %>%
+  mutate(descrip_cond = as.factor(descrip_cond)) %>%
+  pivot_wider(names_from = bfi_type, values_from = value)
 ```
 
 ## 3-level between-subjects
 
-### Results
+### Results: Unstandardized
 
 **Check code chunks of each model (under "Results") to see how fixed and random effects, as well as residuals, were estimated.**
 
 ```{r}
-# tab_model(study1_mod1) # Using results from study 1 as basis
+tab_model(study1_mod1) # Using results from study 1 as basis
 
-# intercept, self_c, target type:wm v ww, target type:wm v bm, self_c:target_type: wm v ww, self_c:target_type: wm v bm
-fixed <- c(3, -0.07, 0.08, 0.07, -0.13, -0.15)
-rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
-res <- 1.2
+fixed <- c(3, -0.10, 0.01, 0.02, 0.03, 0.10, 0.02, -0.05, 0.15, 0.02, 0.03, 0.03, -0.15, 0.02, 0.04, 0.15)
+# fixed <- c(3, -0.10, 0.03, 0.10, 0.15, 0.01, -0.05, -0.35)
+rand <- list(.02, .06, .55) # gets random values close-ish to previous model
+res <- 1.2 # slightly higher than previously found to be more conservative
 
-sim_mod1 <- makeLmer(targ_score ~ self_score_c*target_type + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
+sim_mod1 <- makeLmer(targ ~ self*descrip_cond*targ_gender*intervention + (self|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_wth_clean)
 
 tab_model(sim_mod1)
 ```
@@ -134,79 +188,14 @@ tab_model(sim_mod1)
 ```{r}
 powercurve_sim_mod1 <- powerCurve(sim_mod1, 
                                   along = "id", 
-                                  nsim = 10,  
-                                  test = fcompare(targ_score ~ self_score_c:target_type),
-                                  breaks = c(150, 200, 250, 300, 350, 450))
+                                  nsim = 300,  
+                                  test = fcompare(targ ~ self:descrip_cond:targ_gender:intervention),
+                                  breaks = c(100, 200, 250, 300, 350, 400, 450))
 powercurve_sim_mod1
 
 plot(powercurve_sim_mod1)
 
 # https://cran.r-project.org/web/packages/simr/vignettes/examples.html
-```
-
-## With threat moderator
-
-### Results
-
-```{r}
-summary(study1_mod2)
-# intercept, self_c, target type:wm v ww, target type:wm v bm, self_c:target_type: wm v ww, self_c:target_type: wm v bm
-fixed <- c(3, -0.07, 0.08, 0.08, -.04, 0.07, 0.07, -.07, 0.01, 0.01, -0.13, -0.15)
-rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
-res <- 1.2
-
-sim_mod2 <- makeLmer(targ_score ~ self_score_c*target_type*threat_c + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
-
-sim_mod2 <- makeLmer(targ_score ~ self_score_c*target_type*threat_c + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
-# Do I need to do something to show this is within-subjects?
-
-tab_model(sim_mod2)
-```
-
-### Powercurve
-
-```{r}
-# powerSim(sim_mod2, nsim=100, test = fcompare(targ_score ~ self_score_c:target_type:threat_c))
-
-powercurve_sim_mod2 <- powerCurve(sim_mod2, 
-                                  along = "id", 
-                                  nsim = 10,  
-                                  test = fcompare(targ_score ~ self_score_c:target_type:threat_c),
-                                  breaks = c(150, 200, 250, 300, 350, 450))
-powercurve_sim_mod2
-
-plot(powercurve_sim_mod2)
-```
-
-## 3 (within) x 2 (between)
-
-### Results
-
-```{r}
-summary(study1_mod1)
-# intercept, self_c, target type:wm v ww, target type:wm v bm, self_c:target_type: wm v ww, self_c:target_type: wm v bm
-fixed <- c(3, -0.07, 0.08, 0.07, 0.09, 0.08, 0.14, 0.12, 0.01, 0.01, -0.12, -0.13)
-rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
-res <- 1.2
-
-sim_mod3 <- makeLmer(targ_score ~ self_score_c*target_type*descrip_cond + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim1_clean)
-
-tab_model(sim_mod3)
-```
-
-### Powercurve
-
-```{r}
-# powerSim(sim_mod3, nsim=1, test = fcompare(targ_score ~ self_score_c:target_type:descrip_cond))
-
-powercurve_sim_mod3 <- powerCurve(sim_mod3, 
-                                  along = "id", 
-                                  nsim = 100,  
-                                  test = fcompare(targ_score ~ self_score_c:target_type:descrip_cond),
-                                  breaks = c(150, 200, 250, 300, 350, 450))
-powercurve_sim_mod3
-
-plot(powercurve_sim_mod3)
 ```
 
 # Using simulated data to match Study 3 {.tabset .tabset-fade .tabset-pills}
@@ -215,36 +204,93 @@ plot(powercurve_sim_mod3)
 
 ```{r}
 # sim data study 3
-targets <- c("white_man", "white_woman")
-intervention <- c("control", "analog", "narrative")
-politics <- c("liberal", "conservative")
+target_descrip <- c("emapthetic", "cold")
+intervention <- c("control", "control", "control", "control","analog", "analog", "analog", "analog", "narrative", "narrative", "narrative", "narrative")
+politics <- c("liberal","liberal", "conservative", "conservative")
 
-sim2 <- data.frame(id = rep(factor(1:675), each = 19*2), 
-                   bfi_num = rep(1:19, each = 2),
-                   self_score_c = rep(rnorm(25650, mean = 0, sd = 1.28), each = 2),
-                   targ_score = rnorm(25650, mean = 3, sd = 1.14),
-                   target_type = rep(targets),
-                   pt_intervention = rep(intervention, each = 19*2),
-                   threat_c = rnorm(25650, mean = 0, sd = 1.3),
-                   politics = rep(politics, each = 19*2))
+sim2_wth <- data.frame(id = rep(factor(1:720), each = 2),
+                   self_1 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_2 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_3 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_4 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_5 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_6 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_7 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_8 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_9 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_10 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_11 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_12 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_13 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_14 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_15 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_16 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_17 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_18 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   self_19 = rep(rnorm(720, mean = 0, sd = 1.28), each = 2),
+                   targ_1 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_2 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_3 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_4 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_5 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_6 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_7 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_8 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_9 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_10 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_11 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_12 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_13 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_14 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_15 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_16 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_17 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_18 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   targ_19 = rep(rnorm(720, mean = 3, sd = 1.14), each = 2),
+                   intervention = rep(intervention),
+                   politics = rep(politics),
+                   threat_c = rnorm(1440, mean = 0, sd = 1.3),
+                   self_esteem = rnorm(1440, mean = 0, sd = 1.5))
 
-sim2_clean <- sim2 %>% 
-  mutate(pt_intervention = as.factor(pt_intervention),
-         target_type = as.factor(target_type))
+
+sim2_wth_clean <- sim2_wth %>%
+  pivot_longer(cols = self_1:targ_19,
+             names_sep = "_",
+             names_to = c("bfi_type", "bfi_number")) %>%
+  pivot_wider(names_from = bfi_type, values_from = value) %>% 
+  unique()
+
 ```
+
+## Political model to replicate
+
+```{r}
+study1_politics <- long_data %>% 
+  select(sub_id, target_bfi_value, target_bfi_number, self_c, 
+         target_number_collapsed, condition_order, threat_c, cand_pref, threat, stereo) %>% 
+  na.omit() %>% 
+  unique()
+
+study1_pol1 <- lmer(target_bfi_value ~ self_c*target_number_collapsed*cand_pref + (self_c|sub_id), data = study1_politics)
+
+summary(study1_pol1)
+
+powerSim(study1_pol1, test = fcompare(target_bfi_value ~ self_c:target_number_collapsed:cand_pref), nsim = 10)
+```
+
 
 ## 3 (between) x 2 (within)
 
 ### Results
 
 ```{r}
-summary(study1_mod1)
 # intercept, me self, me targ, me pt, self x targ, self x pt 1, self x pt 2, targ x pt 1, targ x pt 2, self x targ x pt 1, self x targ x pt 2
-fixed <- c(3, -0.07, 0.06, 0.12, 0.08, 0.09, 0.14, 0.12, -0.07, -0.02, -0.10, -0.13)
-rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
-res <- 1.2
+fixed <- c(3, -0.10, 0.10, 0.09, 0.08, 0.15, 0.10, 0.12, 0.10, 0.12, -0.15, -0.15)
+# fixed <- c(3, -0.10, 0.03, 0.10, 0.15, 0.01, -0.05, -0.35)
+rand <- list(.02, .06, .5) # The model including politics was singular previously and 
+res <- 2 # slightly higher than previously found to be more conservative
 
-sim2_mod1 <- makeLmer(targ_score ~ self_score_c*target_type*pt_intervention + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim2_clean)
+sim2_mod1 <- makeLmer(targ ~ self*politics*intervention + (self|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim2_wth_clean)
 
 tab_model(sim2_mod1)
 ```
@@ -256,46 +302,12 @@ tab_model(sim2_mod1)
 
 powercurve_sim2_mod1 <- powerCurve(sim2_mod1, 
                                   along = "id", 
-                                  nsim = 10,  
-                                  test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention),
-                                  breaks = c(250, 300, 350, 450, 550, 650))
+                                  nsim = 300,  
+                                  test = fcompare(targ ~ self:politics:intervention),
+                                  breaks = c(100, 150, 200, 250, 300, 350, 400, 450, 500))
 
 powercurve_sim2_mod1
 
 plot(powercurve_sim2_mod1)
 ```
 
-
-## 3 (between) x 2 (within) x 2 (between)
-
-### Results
-
-```{r}
-summary(study1_mod1)
-# intercept, me self, me targ, me pt, self x targ, self x pt 1, self x pt 2, targ x pt 1, targ x pt 2, self x targ x pt 1, self x targ x pt 2
-fixed <- c(3, -0.07, 0.06, 0.12, 0.10, 0.02, 0.08, 0.14, 0.12, -0.07, -0.02, -.10, 0.04, -0.02, -0.03, -0.10, -0.14, -0.12, -0.12, -0.08, 0.02, 0.01, -0.10, -0.13)
-rand <- list(.02, .06, .02) # gets random values close-ish to previous model... I think?
-res <- 1.2
-
-lmer(targ_score ~ self_score_c*target_type*pt_intervention*politics + (self_score_c|id), data = sim2_clean)
-
-sim2_mod2 <- makeLmer(targ_score ~ self_score_c*target_type*pt_intervention*politics + (self_score_c|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim2_clean)
-
-tab_model(sim2_mod2)
-```
-
-### Powercurve
-
-```{r}
-# powerSim(sim2_mod2, nsim=1, test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention))
-
-powercurve_sim2_mod2 <- powerCurve(sim2_mod2, 
-                                  along = "id", 
-                                  nsim = 10,  
-                                  test = fcompare(targ_score ~ self_score_c:target_type:pt_intervention:politics),
-                                  breaks = c(300, 350, 450, 550, 600, 650))
-
-powercurve_sim2_mod2
-
-plot(powercurve_sim2_mod2)
-```
