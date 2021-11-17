@@ -93,7 +93,8 @@ powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c:target_number_co
 # Simulated power - Study 2 {.tabset .tabset-fade .tabset-pills}
 
 ```{r}
-conditions <- c("pre/post", "post only warm male", "post only warm female", "post only cold female")
+targ_conditions <- c("pre/post", "warm male", "warm female", "cold female")
+intervention <- c("analog", "analog", "analog", "analog", "control", "control", "control", "control")
 
 psych::describe(long_data$self_c)
 psych::describe(long_data$target_bfi_value)
@@ -109,7 +110,12 @@ sim_bfi_df <- data.frame(id = rep(factor(1:1000), each = 19),
                      self = rep(rnorm(19000, mean = 0, sd = 1.28)),
                      stereo = rep(rnorm(19000, mean = 0, sd = 1.22)),
                      threat = rnorm(19000, mean = 0, sd = 1.3),
-                     condition = factor(rep(conditions, each = 19)))
+                     targ_condition = factor(rep(targ_conditions, each = 19)),
+                     intervention = factor(rep(intervention, each = 19)))
+
+sim_bfi_df %>% 
+  group_by(targ_condition, intervention) %>% 
+  count()
 ```
 
 ## BFI Simulation Model
@@ -117,38 +123,63 @@ sim_bfi_df <- data.frame(id = rep(factor(1:1000), each = 19),
 ```{r}
 tab_model(study1_mod1) # Using results from study 1 as basis
 
-my.helmert = matrix(c(-1/4, -1/4, -1/4, 3/4, 2/3, -1/3, -1/3, 0, 0, 1/
-	2, -1/2, 0), ncol = 3)
+my.helmert = matrix(c(-1/4, 3/4, -1/4, -1/4, 2/3, 0, -1/3, -1/3, 0, 0, 1/
+	2, -1/2), ncol = 3)
 my.helmert
 
-contrasts(sim_bfi_df$condition) = my.helmert
-contrasts(sim_bfi_df$condition)
+contrasts(sim_bfi_df$targ_condition) = my.helmert
+contrasts(sim_bfi_df$targ_condition)
 
-fixed <- c(3, 0.09, 0.3, 0.01, 0.10, 0.15, 0.10, 0.03, 0.05, 0.15, 0.10, 0.03, 0.15, 0.10, 0.01, 0.02, 0.03, 0.01, 0.04, 0.15, 0.10, 0.03, 0.05, 0.02, 0.05)
+# fixed <- c(3, 0.09, 0.2, 0.01, 0.15, 0.10, 0.03, 0.10, 0.10, 0.20, 0.15, 0.10, 0.15, 0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.10, 0.03, 0.15, 0.10, 0.05, 0.10, 0.20, 0.15, 0.10, 0.20, 0.15, 0.10, 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+fixed <- c(3, 0.09, 0.10, 0.01, 0.08, 0.06, 0.03, 0.10, 0.10, 
+           0.2, 0.15, 0.10, 0.05, 0.15, 
+           0.08, 0.05, 0.03, 0.10, 0.08, 0.04, 0.10,
+           0.10, 0.08, 0.04, 0.10, 0.08, 0.05, 0.10,
+           0.0, 0.0, 0.0, 0.0, 0.0,
+           0.10, 0.08, 0.04, 0.10, 0.06, 0.02,
+           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.03, 0.01)
 # fixed <- c(3, -0.10, 0.03, 0.10, 0.15, 0.01, -0.05, -0.35)
-rand <- list(.08, .05, .4) # Use values on the between subjects model in Denning & Hodges 2021
-res <- 10 # For between-subjects was .91; using higher value to be more conservative
+rand <- list(.02, .06, .55) # Use values on the between subjects model in Denning & Hodges 2021
+res <- 8.5 # For between-subjects was .91; using higher value to be more conservative
 
-sim_mod1 <- makeLmer(targ ~ self + stereo + self:stereo + # mae of self, stereo, & their int
-                        self:threat + self:condition + stereo:threat + stereo:condition + # me of predictors
-                       self:threat:condition + self:stereo:threat + self:stereo:condition + # interactions on projection
-                       stereo:threat:condition + self:stereo:threat:condition # int on stereo & 4-way
+# checking moderating relationship without stereo and with stereo in the same model to account for stereotyping; not allowing interactions of variables without stereo or self as they are not relevant
+sim_mod1 <- makeLmer(targ ~ self + stereo + self:stereo +
+                       self:targ_condition + self:intervention + self:threat +
+                       self:targ_condition:intervention +
+                       self:targ_condition:threat + self:intervention:threat +
+                       self:targ_condition:intervention:threat +
+                       stereo:targ_condition + stereo:intervention + stereo:threat +
+                       stereo:targ_condition:intervention +
+                       stereo:targ_condition:threat + stereo:intervention:threat +
+                       stereo:targ_condition:intervention:threat +
+                       self:stereo:targ_condition + self:stereo:intervention +
+                       self:stereo:threat +
+                       self:stereo:targ_condition:intervention +
+                       self:stereo:targ_condition:threat + 
+                       self:stereo:intervention:threat +
+                       self:stereo:targ_condition:intervention:threat
+                       
  + (self|id), fixef=fixed, VarCorr = rand, sigma = res, data = sim_bfi_df)
 
 tab_model(sim_mod1)
+
+
 ```
 
 ### Powercurve
 
-```{r}
-powercurve_sim_mod1 <- powerCurve(sim_mod1, 
-                                  along = "id", 
-                                  nsim = 300,  
-                                  test = fcompare(targ ~ self:stereo:threat:condition),
-                                  breaks = c(400, 450, 500, 550, 600, 650, 700))
-powercurve_sim_mod1
+*Accounting for stereotyping but not interacting*
 
-plot(powercurve_sim_mod1)
+```{r}
+powercurve_sim1 <- powerCurve(sim_mod1, 
+                                  along = "id", 
+                                  nsim = 100,  
+                                  test = fcompare(targ ~ self:targ_condition:intervention:threat),
+                                  breaks = c(400, 500, 550, 600, 650, 700))
+powercurve_sim1
+
+plot(powercurve_sim1)
 
 # https://cran.r-project.org/web/packages/simr/vignettes/examples.html
 ```
