@@ -22,6 +22,7 @@ library(dplyr)
 #library(magrittr)
 library(rio)
 library(sjPlot)
+library(pwr)
 
 source("functions/Cleaning.R")
 
@@ -53,7 +54,7 @@ study1_filtered <- study1_data %>%
 
 # Using data from Study 1 (observed power) {.tabset .tabset-fade .tabset-pills}
 
-**These reflect observed power of results that can be found in Study 1 of my dissertation (project titled analogous-perspective-taking-2 on github: https://github.com/kdenning/analogous-perspective-taking-2). I am using them here as reference for simulations for Studies 2 and 3 below.**
+**These reflect observed power of results that can be found in Study 1 of my dissertation (project titled analogous-perspective-taking-2 on github: https://github.com/kdenning/analogous-perspective-taking-2). I am using them here as reference for simulations for Study 2 below.**
 
 ## 2 categorical & self
 
@@ -93,8 +94,8 @@ powerSim(study1_mod2, test = fcompare(target_bfi_value ~ self_c:target_number_co
 # Simulated power - Study 2 {.tabset .tabset-fade .tabset-pills}
 
 ```{r}
-targ_conditions <- c("pre/post", "warm male", "warm female", "cold female")
-intervention <- c("analog", "analog", "analog", "analog", "control", "control", "control", "control")
+targ_conditions <- c("high", "medium", "control")
+intervention <- c("analog", "analog", "analog", "control", "control", "control")
 
 psych::describe(long_data$self_c)
 psych::describe(long_data$target_bfi_value)
@@ -104,12 +105,12 @@ psych::describe(long_data$threat_c)
 # ELI for self?
 # ELI for targ?
 
-sim_bfi_df <- data.frame(id = rep(factor(1:1000), each = 19),
+sim_bfi_df <- data.frame(id = rep(factor(1:900), each = 19),
                      bfi_num = rep(factor(1:19)),
-                     targ = rep(rnorm(19000, mean = 3, sd = 1.14)),
-                     self = rep(rnorm(19000, mean = 0, sd = 1.28)),
-                     stereo = rep(rnorm(19000, mean = 0, sd = 1.22)),
-                     threat = rnorm(19000, mean = 0, sd = 1.3),
+                     targ = rep(rnorm(17100, mean = 3, sd = 1.14)),
+                     self = rep(rnorm(17100, mean = 0, sd = 1.28)),
+                     stereo = rep(rnorm(17100, mean = 0, sd = 1.22)),
+                     threat = rnorm(17100, mean = 0, sd = 1.3),
                      targ_condition = factor(rep(targ_conditions, each = 19)),
                      intervention = factor(rep(intervention, each = 19)))
 
@@ -123,25 +124,22 @@ sim_bfi_df %>%
 ```{r}
 tab_model(study1_mod1) # Using results from study 1 as basis
 
-my.helmert = matrix(c(-1/4, 3/4, -1/4, -1/4, 2/3, 0, -1/3, -1/3, 0, 0, 1/
-	2, -1/2), ncol = 3)
+my.helmert = matrix(c(2/3, -1/3, -1/3, 0, 1/
+	2, -1/2), ncol = 2)
 my.helmert
 
 contrasts(sim_bfi_df$targ_condition) = my.helmert
 contrasts(sim_bfi_df$targ_condition)
 
-# fixed <- c(3, 0.09, 0.2, 0.01, 0.15, 0.10, 0.03, 0.10, 0.10, 0.20, 0.15, 0.10, 0.15, 0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.15, 0.10, 0.03, 0.15, 0.10, 0.05, 0.10, 0.20, 0.15, 0.10, 0.20, 0.15, 0.10, 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-
-fixed <- c(3, 0.09, 0.10, 0.01, 0.08, 0.06, 0.03, 0.10, 0.10, 
-           0.2, 0.15, 0.10, 0.05, 0.15, 
-           0.08, 0.05, 0.03, 0.10, 0.08, 0.04, 0.10,
-           0.10, 0.08, 0.04, 0.10, 0.08, 0.05, 0.10,
-           0.0, 0.0, 0.0, 0.0, 0.0,
-           0.10, 0.08, 0.04, 0.10, 0.06, 0.02,
-           0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.03, 0.01)
+fixed <- c(3, 0.09, 0.10, 0.01, 0.15, 0.08, 0.10, 0.10, 
+           0.2, 0.15, 0.12, 0.10, 
+           0.15, 0.08, 0.18, 0.10, 0.10, 0.15, 0.08, 0.18,
+           0.10, 0.08, 0.0, 0.0, 0.0, 0.0,
+           0.15, 0.08, 0.18, 0.10, 
+           0.0, 0.0, 0.0, 0.0, 0.0, 0.05, 0.03)
 # fixed <- c(3, -0.10, 0.03, 0.10, 0.15, 0.01, -0.05, -0.35)
 rand <- list(.02, .06, .55) # Use values on the between subjects model in Denning & Hodges 2021
-res <- 8.5 # For between-subjects was .91; using higher value to be more conservative
+res <- 8 # For between-subjects was .91; using higher value to be more conservative
 
 # checking moderating relationship without stereo and with stereo in the same model to account for stereotyping; not allowing interactions of variables without stereo or self as they are not relevant
 sim_mod1 <- makeLmer(targ ~ self + stereo + self:stereo +
@@ -182,4 +180,10 @@ powercurve_sim1
 plot(powercurve_sim1)
 
 # https://cran.r-project.org/web/packages/simr/vignettes/examples.html
+```
+
+# Simulation for Pilot
+
+```{r}
+pwr.anova.test(k=5, f=.25, sig.level=.05, power=.80)
 ```
